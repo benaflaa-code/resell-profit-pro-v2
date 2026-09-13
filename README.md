@@ -13,6 +13,9 @@ https://resell-profit-pro-v2.amineben.chatgpt.site
 - Conservative, expected, and optimistic outcomes
 - Seller-paid U.S. shipping estimate
 - One-click exact-offer and specification-matched alternative comparison
+- Separate retail and wholesale comparisons with unit price, pack size, MOQ, and minimum order cost
+- Automatic quarantine of extreme price anomalies so they cannot distort the usable market range
+- Conservative sale history that accepts only public records explicitly marked sold, completed, or ended
 - Optional retailer URL input for more precise product and specification extraction
 - Refreshable market snapshots from a self-hosted open-source price agent
 - Browser-persistent Product Idea Book
@@ -45,6 +48,8 @@ The hosted app remains usable without the agent: manual marketplace links and co
 The agent requires an exact normalized UPC, ASIN, or model-number match whenever an identifier is entered. It returns “No exact match” instead of pricing a semantically similar but unrelated result. Product-name-only searches must pass a strict word-overlap check before Ollama summarizes the surviving listings.
 
 Market refresh keeps exact-product offers separate from alternative products. It extracts published specifications such as pressure, voltage, airflow, battery capacity, power source, auto-stop, and LED lighting when available, then labels alternatives with a specification-match score and the measurable differences. Alternative prices never enter the exact-product low, median, high, or conservative price.
+
+Retail asking prices and wholesale sourcing quotes are also kept separate. Pack prices are converted to a unit basis, while a wholesale MOQ is used to show the minimum merchandise commitment instead of being mistaken for a pack quantity. A large multiplicative price gap is disclosed under **Excluded price anomalies** and does not affect retail statistics. Wholesale prices may still exclude freight, duties, taxes, samples, and negotiation.
 
 ## Run locally
 
