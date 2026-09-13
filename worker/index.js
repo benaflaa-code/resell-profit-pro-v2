@@ -103,7 +103,7 @@ export default {
       : url.pathname === "/app.js" ? [APP_JS, "text/javascript; charset=utf-8"] : null;
     if (!asset) return new Response("Not found", { status: 404 });
     return new Response(request.method === "HEAD" ? null : asset[0], {
-      headers: { "content-type": asset[1], "cache-control": url.pathname === "/" ? "no-cache" : "public, max-age=3600" }
+      headers: { "content-type": asset[1], "cache-control": "no-cache" }
     });
   }
 };
