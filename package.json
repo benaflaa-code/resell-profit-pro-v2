@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "validate": "node scripts/validate-artifact.mjs"
+    "validate": "node scripts/validate-artifact.mjs && node scripts/validate-security.mjs",
+    "test:worker": "node tests/test-worker.mjs"
   }
 }

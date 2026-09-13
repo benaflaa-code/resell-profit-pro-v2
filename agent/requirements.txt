@@ -1,4 +1,6 @@
-fastapi==0.116.1
-uvicorn[standard]==0.35.0
+fastapi==0.141.1
+starlette==1.6.0
+uvicorn[standard]==0.52.4
 httpx==0.28.1
-beautifulsoup4==4.13.5
+beautifulsoup4==4.15.0
+soupsieve==2.9.2

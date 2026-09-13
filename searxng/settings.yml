@@ -1,6 +1,7 @@
 use_default_settings: true
 
 server:
+  # Overridden at runtime by the required SEARXNG_SECRET environment variable.
   secret_key: "replace-this-local-secret"
   bind_address: "0.0.0.0"
   port: 8080

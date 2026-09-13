@@ -14,6 +14,8 @@ const money = value => new Intl.NumberFormat("en-US", { style:"currency", curren
 const pct = value => `${(Number.isFinite(value) ? value : 0).toFixed(1)}%`;
 const clamp = (v,min,max) => Math.min(max,Math.max(min,v));
 const safeJSON = (key,fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
+const safeStorageGet = (storage,key) => { try { return storage.getItem(key) || ""; } catch { return ""; } };
+const safeStorageSet = (storage,key,value) => { try { if (value) storage.setItem(key,value); else storage.removeItem(key); } catch {} };
 
 const storedFees = safeJSON("rpp2_fees", {});
 let fees = Object.fromEntries(Object.entries(DEFAULT_FEES).map(([name, defaults]) => [name, { ...defaults, ...(storedFees[name] || {}) }]));
@@ -23,7 +25,14 @@ let lastAnalysis = null;
 let lastMarketSnapshot = null;
 let lastMarketInputKey = "";
 let currentFilter = "All";
-let agentConnection = safeJSON("rpp2_agent_connection", { url: "", token: "" });
+const legacyAgentConnection = safeJSON("rpp2_agent_connection", { url: "", token: "" });
+let agentConnection = {
+  url: safeStorageGet(localStorage, "rpp2_agent_url") || cleanAgentUrl(legacyAgentConnection.url),
+  token: safeStorageGet(sessionStorage, "rpp2_agent_token") || String(legacyAgentConnection.token || "")
+};
+if (agentConnection.url) safeStorageSet(localStorage, "rpp2_agent_url", agentConnection.url);
+if (agentConnection.token) safeStorageSet(sessionStorage, "rpp2_agent_token", agentConnection.token);
+safeStorageSet(localStorage, "rpp2_agent_connection", "");
 
 function cleanAgentUrl(value) {
   try {
@@ -49,7 +58,8 @@ function showAgentConnection(state, message) {
 
 function populateAgentSettings() {
   $("agentUrl").value = agentConnection.url || "";
-  $("agentToken").value = agentConnection.token || "";
+  $("agentToken").value = "";
+  $("agentToken").placeholder = agentConnection.token ? "Token saved for this browser tab" : "Paste the value from AGENT_TOKEN";
   const saved = agentConnection.url && agentConnection.token;
   showAgentConnection(saved ? "ready" : "idle", saved ? "Connection saved in this browser. Test it before closing settings." : "Enter the tunnel address and token from your computer.");
 }
@@ -57,12 +67,13 @@ function populateAgentSettings() {
 function saveAgentSettings() {
   const rawUrl = $("agentUrl").value.trim();
   const url = cleanAgentUrl(rawUrl);
-  const token = $("agentToken").value.trim();
+  const token = $("agentToken").value.trim() || agentConnection.token;
   if (rawUrl && !url) throw new Error("Use the HTTPS trycloudflare.com address shown by your tunnel.");
   if ((url && !token) || (!url && token)) throw new Error("Both the tunnel address and private token are required.");
   agentConnection = { url, token };
-  if (url) localStorage.setItem("rpp2_agent_connection", JSON.stringify(agentConnection));
-  else localStorage.removeItem("rpp2_agent_connection");
+  safeStorageSet(localStorage, "rpp2_agent_url", url);
+  safeStorageSet(sessionStorage, "rpp2_agent_token", token);
+  safeStorageSet(localStorage, "rpp2_agent_connection", "");
 }
 
 async function testAgentConnection() {
@@ -388,7 +399,7 @@ function renderIdeas(){
 function updateActualIdeas(){ $("actualIdea").innerHTML=`<option value="">Manual entry</option>${ideas.map(x=>`<option value="${x.id}">${escapeHTML(x.name)}</option>`).join("")}`; }
 function showView(id){ document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===id)); document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.view===id)); window.scrollTo({top:0,behavior:"smooth"}); }
 function escapeHTML(value){ return String(value).replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c])); }
-function safeWebUrl(value){try{const url=new URL(String(value||""));return ["http:","https:"].includes(url.protocol)?url.href:""}catch{return ""}}
+function safeWebUrl(value){try{const url=new URL(String(value||""));return url.protocol==="https:"?url.href:""}catch{return ""}}
 function toast(message){ const el=$("toast");el.textContent=message;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2200); }
 
 function renderFeeSettings(){ $("feeSettings").innerHTML=Object.entries(fees).map(([name,f])=>`<div class="fee-row" data-platform="${escapeHTML(name)}"><label>${escapeHTML(name)}</label><label><input class="rate" type="number" min="0" step="0.01" value="${f.rate}"> %</label><label><input class="fixed" type="number" min="0" step="0.01" value="${f.fixed}"> fixed</label></div>`).join(""); }
@@ -418,7 +429,9 @@ document.querySelectorAll(".close-settings").forEach(button=>button.addEventList
 $("testAgentConnection").addEventListener("click",testAgentConnection);
 $("forgetAgentConnection").addEventListener("click",()=>{
   agentConnection={url:"",token:""};
-  localStorage.removeItem("rpp2_agent_connection");
+  safeStorageSet(localStorage,"rpp2_agent_url","");
+  safeStorageSet(sessionStorage,"rpp2_agent_token","");
+  safeStorageSet(localStorage,"rpp2_agent_connection","");
   populateAgentSettings();
   toast("Local agent connection removed");
 });

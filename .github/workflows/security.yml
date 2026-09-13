@@ -1,0 +1,36 @@
+name: Security checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: agent/requirements.txt
+      - name: Install agent dependencies
+        run: |
+          python -m pip install --disable-pip-version-check --upgrade pip==26.2.1
+          python -m pip install --disable-pip-version-check -r agent/requirements.txt pip-audit==2.10.1
+      - name: Audit Python dependencies
+        run: python -m pip_audit -r agent/requirements.txt
+      - run: python -m unittest discover -s tests -p "test_*.py"
+      - run: node --check dist/app.js
+      - run: node --check worker/index.js
+      - run: npm run build
+      - run: npm run validate
+      - run: npm run test:worker

@@ -2,8 +2,12 @@ services:
   searxng:
     image: ghcr.io/searxng/searxng:latest
     restart: unless-stopped
+    environment:
+      SEARXNG_SECRET: ${SEARXNG_SECRET:?Set SEARXNG_SECRET in .env}
     volumes:
       - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+    security_opt:
+      - no-new-privileges:true
 
   ollama:
     image: ollama/ollama:latest
@@ -32,8 +36,20 @@ services:
       OLLAMA_MODEL: qwen3:4b
       AGENT_TOKEN: ${AGENT_TOKEN:?Set AGENT_TOKEN in .env}
       MAX_RESULTS: 7
+      MAX_RESPONSE_BYTES: 1000000
+      MAX_LOOKUPS_PER_MINUTE: 12
+      PYTHONDONTWRITEBYTECODE: 1
     ports:
       - "127.0.0.1:8787:8787"
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 512m
 
 volumes:
   ollama-data:
