@@ -34,8 +34,10 @@ The included Docker setup runs three local services:
 2. Copy `.env.example` to `.env` and replace the example token with a long random value.
 3. Run `docker compose up -d --build`.
 4. Verify the local service at `http://127.0.0.1:8787/health`.
-5. Place the agent behind an authenticated HTTPS endpoint. Do not expose Ollama or SearXNG directly.
-6. Configure the hosted app's private `PRICE_AGENT_URL` and `PRICE_AGENT_TOKEN` environment variables.
+5. Place the agent behind an authenticated HTTPS endpoint. Do not expose Ollama or SearXNG directly. For a temporary test, a Cloudflare Quick Tunnel can point to `http://host.docker.internal:8787`.
+6. In the live app, open **Settings**, paste the HTTPS tunnel address and the private agent token, then select **Test connection**. These connection details stay in that browser and are not added to the public source code.
+
+For an always-on deployment, site administrators can instead configure private `PRICE_AGENT_URL` and `PRICE_AGENT_TOKEN` runtime variables. Quick Tunnel addresses change when the tunnel restarts and are intended for testing.
 
 The hosted app remains usable without the agent: manual marketplace links and comparable-sale entry continue to work. Public sites can restrict or block automated access, so every result includes its source and must be checked before buying.
 

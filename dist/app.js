@@ -22,6 +22,62 @@ let comps = [];
 let lastAnalysis = null;
 let lastMarketSnapshot = null;
 let currentFilter = "All";
+let agentConnection = safeJSON("rpp2_agent_connection", { url: "", token: "" });
+
+function cleanAgentUrl(value) {
+  try {
+    const url = new URL(String(value || "").trim());
+    if (url.protocol !== "https:" || !url.hostname.toLowerCase().endsWith(".trycloudflare.com")) return "";
+    return url.origin;
+  } catch { return ""; }
+}
+
+function agentHeaders() {
+  if (!agentConnection.url || !agentConnection.token) return {};
+  return { "x-rpp-agent-url": agentConnection.url, "x-rpp-agent-token": agentConnection.token };
+}
+
+function showAgentConnection(state, message) {
+  const badge = $("agentConnectionBadge");
+  const status = $("agentConnectionMessage");
+  badge.className = `data-label ${state === "success" ? "live" : state === "error" ? "offline" : "manual"}`;
+  badge.textContent = state === "success" ? "CONNECTED" : state === "loading" ? "TESTING" : state === "error" ? "CHECK SETTINGS" : "NOT CONNECTED";
+  status.className = `connection-message ${state}`;
+  status.textContent = message;
+}
+
+function populateAgentSettings() {
+  $("agentUrl").value = agentConnection.url || "";
+  $("agentToken").value = agentConnection.token || "";
+  const saved = agentConnection.url && agentConnection.token;
+  showAgentConnection(saved ? "ready" : "idle", saved ? "Connection saved in this browser. Test it before closing settings." : "Enter the tunnel address and token from your computer.");
+}
+
+function saveAgentSettings() {
+  const rawUrl = $("agentUrl").value.trim();
+  const url = cleanAgentUrl(rawUrl);
+  const token = $("agentToken").value.trim();
+  if (rawUrl && !url) throw new Error("Use the HTTPS trycloudflare.com address shown by your tunnel.");
+  if ((url && !token) || (!url && token)) throw new Error("Both the tunnel address and private token are required.");
+  agentConnection = { url, token };
+  if (url) localStorage.setItem("rpp2_agent_connection", JSON.stringify(agentConnection));
+  else localStorage.removeItem("rpp2_agent_connection");
+}
+
+async function testAgentConnection() {
+  try {
+    saveAgentSettings();
+    if (!agentConnection.url) throw new Error("Enter the tunnel address and private token first.");
+    showAgentConnection("loading", "Checking your computer…");
+    const response = await fetch("/api/market-health", { headers: agentHeaders() });
+    const data = await response.json().catch(() => ({}));
+    if (data.reachable && !data.authorized) throw new Error("The tunnel is online, but the private token does not match AGENT_TOKEN in your .env file.");
+    if (!response.ok || !data.reachable) throw new Error("The tunnel is not reaching the market agent. Keep Docker and Cloudflare Tunnel running.");
+    showAgentConnection("success", `${data.model || "Local model"} is online and ready for market searches.`);
+  } catch (error) {
+    showAgentConnection("error", error.message || "Connection test failed.");
+  }
+}
 
 function shippingEstimate() {
   const weight = num("weight");
@@ -194,12 +250,17 @@ async function refreshMarketData() {
   try {
     const response = await fetch("/api/market-lookup", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...agentHeaders() },
       body: JSON.stringify({ identifier, product_name: productName })
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      if (data.error === "agent_not_configured") throw new Error("The open-source agent is installed but not connected to this deployment yet. Manual marketplace links remain available below.");
+      if (data.error === "agent_not_configured") {
+        renderFeeSettings();
+        populateAgentSettings();
+        $("settingsDialog").showModal();
+        throw new Error("Connect your local agent in Settings, then refresh again. Manual marketplace links remain available below.");
+      }
       throw new Error(data.message || "The market agent could not complete this lookup.");
     }
     renderMarketSnapshot(data);
@@ -257,9 +318,29 @@ $("compChips").addEventListener("click",e=>{const b=e.target.closest("[data-comp
 $("clearComps").addEventListener("click",()=>{comps=[];renderComps()});
 $("refreshMarketButton").addEventListener("click",refreshMarketData);
 $("useMarketPrice").addEventListener("click",()=>{const price=Number($("useMarketPrice").dataset.price);if(price>0){$("salePrice").value=price.toFixed(2);analyze();toast("Conservative market price applied")}});
-$("settingsButton").addEventListener("click",()=>{renderFeeSettings();$("settingsDialog").showModal()});
+$("settingsButton").addEventListener("click",()=>{renderFeeSettings();populateAgentSettings();$("settingsDialog").showModal()});
+document.querySelectorAll(".close-settings").forEach(button=>button.addEventListener("click",()=>$("settingsDialog").close()));
+$("testAgentConnection").addEventListener("click",testAgentConnection);
+$("forgetAgentConnection").addEventListener("click",()=>{
+  agentConnection={url:"",token:""};
+  localStorage.removeItem("rpp2_agent_connection");
+  populateAgentSettings();
+  toast("Local agent connection removed");
+});
 $("resetFees").addEventListener("click",()=>{fees=structuredClone(DEFAULT_FEES);renderFeeSettings()});
-$("saveFees").addEventListener("click",()=>{document.querySelectorAll(".fee-row").forEach(row=>{fees[row.dataset.platform].rate=Number(row.querySelector(".rate").value)||0;fees[row.dataset.platform].fixed=Number(row.querySelector(".fixed").value)||0});localStorage.setItem("rpp2_fees",JSON.stringify(fees));analyze();toast("Fee assumptions saved")});
+$("settingsForm").addEventListener("submit",event=>{
+  event.preventDefault();
+  try {
+    saveAgentSettings();
+    document.querySelectorAll(".fee-row").forEach(row=>{fees[row.dataset.platform].rate=Number(row.querySelector(".rate").value)||0;fees[row.dataset.platform].fixed=Number(row.querySelector(".fixed").value)||0});
+    localStorage.setItem("rpp2_fees",JSON.stringify(fees));
+    analyze();
+    $("settingsDialog").close();
+    toast("Settings saved");
+  } catch (error) {
+    showAgentConnection("error",error.message||"Check the agent connection settings.");
+  }
+});
 document.querySelectorAll(".filter").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".filter").forEach(x=>x.classList.remove("active"));b.classList.add("active");currentFilter=b.dataset.status;renderIdeas()}));
 $("ideaSort").addEventListener("change",renderIdeas);
 $("ideaGrid").addEventListener("click",e=>{

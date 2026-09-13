@@ -20,7 +20,7 @@
       <button class="tab" data-view="ideas">Idea Book <span id="ideaCount" class="count">0</span></button>
       <button class="tab" data-view="actuals">Actual vs forecast</button>
     </nav>
-    <button id="settingsButton" class="ghost-button">Fee settings</button>
+    <button id="settingsButton" class="ghost-button">Settings</button>
   </header>
 
   <main>
@@ -272,11 +272,30 @@
   </footer>
 
   <dialog id="settingsDialog">
-    <form method="dialog" class="dialog-card">
-      <div class="panel-head"><div><p class="eyebrow">PLANNING PRESETS</p><h2>Marketplace fees</h2></div><button class="icon-button" value="cancel" aria-label="Close">×</button></div>
+    <form id="settingsForm" class="dialog-card">
+      <div class="panel-head"><div><p class="eyebrow">APP SETTINGS</p><h2>Connections & fees</h2></div><button type="button" class="icon-button close-settings" aria-label="Close">×</button></div>
+      <section class="agent-settings" aria-labelledby="agentSettingsTitle">
+        <div class="settings-section-head">
+          <div><h3 id="agentSettingsTitle">Local market agent</h3><p>Saved only in this browser. Your token is never displayed or added to the public source code.</p></div>
+          <span id="agentConnectionBadge" class="data-label manual">NOT CONNECTED</span>
+        </div>
+        <label class="field">HTTPS tunnel address
+          <input id="agentUrl" type="url" inputmode="url" autocomplete="off" placeholder="https://…trycloudflare.com">
+        </label>
+        <label class="field">Private agent token
+          <input id="agentToken" type="password" autocomplete="off" placeholder="Paste the value from AGENT_TOKEN">
+        </label>
+        <div class="agent-setting-actions">
+          <button id="testAgentConnection" type="button" class="secondary-button">Test connection</button>
+          <button id="forgetAgentConnection" type="button" class="text-button">Forget connection</button>
+        </div>
+        <p id="agentConnectionMessage" class="connection-message" role="status" aria-live="polite">Enter the tunnel address and token from your computer.</p>
+      </section>
+      <div class="settings-divider"></div>
+      <h3 class="settings-title">Marketplace fee assumptions</h3>
       <p class="notice">Rates vary by category, account, promotion, and policy. Update these assumptions before buying.</p>
       <div id="feeSettings" class="fee-settings"></div>
-      <div class="dialog-actions"><button id="resetFees" type="button" class="text-button">Restore defaults</button><button id="saveFees" value="default" class="primary-button">Save settings</button></div>
+      <div class="dialog-actions"><button id="resetFees" type="button" class="text-button">Restore fee defaults</button><button id="saveSettings" type="submit" class="primary-button">Save settings</button></div>
     </form>
   </dialog>
 
