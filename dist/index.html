@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#10151f">
   <title>Resell Profit Pro v2</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2310151f'/%3E%3Cpath d='M17 43V21h15c9 0 15 4 15 11s-6 11-15 11H17Zm10-8h6c3 0 5-1 5-3s-2-3-5-3h-6v6Z' fill='%23ff8a3d'/%3E%3Cpath d='m38 42 9-9 5 5-9 9z' fill='%23b6f36b'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css?v=6">
+  <link rel="stylesheet" href="styles.css?v=9">
 </head>
 <body>
   <header class="topbar">
@@ -179,7 +179,7 @@
 
       <section class="research-grid">
         <div id="marketLookupPanel" class="panel market-panel">
-          <div class="panel-head wrap"><div><h2>Market lookup</h2><p>Automatically uses Product name and UPC/model/ASIN from Product & deal.</p></div><span id="marketStatusBadge" class="data-label manual">AGENT CHECK</span></div>
+          <div class="panel-head wrap"><div><h2>Market lookup</h2><p>Automatically uses Product name and UPC/model/ASIN from Product & deal.</p></div><span id="marketStatusBadge" class="data-label manual">READY</span></div>
           <div class="query-preview"><span>Searching for</span><strong id="researchQuery">Enter a product name or identifier.</strong></div>
           <div class="market-actions">
             <button id="refreshMarketButton" type="button" class="primary-button refresh-button"><span aria-hidden="true">&#8635;</span> Refresh market data</button>
@@ -212,9 +212,10 @@
             <a id="amazonLink" target="_blank" rel="noopener">Amazon</a>
             <a id="googleLink" target="_blank" rel="noopener">Google Shopping</a>
             <a id="tiktokLink" target="_blank" rel="noopener">TikTok Shop</a>
-            <a id="stockxLink" target="_blank" rel="noopener">StockX</a>
+            <a id="alibabaLink" target="_blank" rel="noopener">Alibaba · Verified suppliers</a>
+            <a id="dhgateLink" target="_blank" rel="noopener">DHgate</a>
           </div>
-          <p class="notice">Verify the exact variant, condition, quantity, shipping, and sold status before purchasing inventory.</p>
+          <p class="notice">Verify the exact variant, condition, quantity, shipping, and sold status before purchasing inventory. On Alibaba, confirm the Verified Supplier badge and assessment report; wholesale prices can exclude samples, minimum orders, shipping, and import costs.</p>
         </div>
         <div class="panel comps-panel">
           <div class="panel-head"><h2>Comparable sales</h2><button id="clearComps" class="text-button">Clear</button></div>
@@ -315,6 +316,6 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=8"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>

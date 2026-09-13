@@ -5,8 +5,7 @@ const DEFAULT_FEES = {
   "Amazon FBM": { rate: 15, fixed: 0, fulfillment: 0, note: "Seller fulfilled" },
   "Amazon FBA": { rate: 15, fixed: 0, fulfillment: 6.20, note: "Illustrative FBA fee" },
   "TikTok Shop": { rate: 8, fixed: 0, fulfillment: 0, note: "Seller fulfilled" },
-  "Mercari": { rate: 10, fixed: 0, fulfillment: 0, note: "Editable estimate" },
-  "StockX": { rate: 12, fixed: 0, fulfillment: 0, note: "Level-dependent" }
+  "Mercari": { rate: 10, fixed: 0, fulfillment: 0, note: "Editable estimate" }
 };
 const STATUSES = ["Researching","Watchlist","Ready to Buy","Purchased","Listed","Sold","Rejected"];
 const $ = id => document.getElementById(id);
@@ -16,7 +15,8 @@ const pct = value => `${(Number.isFinite(value) ? value : 0).toFixed(1)}%`;
 const clamp = (v,min,max) => Math.min(max,Math.max(min,v));
 const safeJSON = (key,fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
 
-let fees = safeJSON("rpp2_fees", DEFAULT_FEES);
+const storedFees = safeJSON("rpp2_fees", {});
+let fees = Object.fromEntries(Object.entries(DEFAULT_FEES).map(([name, defaults]) => [name, { ...defaults, ...(storedFees[name] || {}) }]));
 let ideas = safeJSON("rpp2_ideas", []);
 let comps = [];
 let lastAnalysis = null;
@@ -203,7 +203,14 @@ function updateResearchLinks() {
   $("amazonLink").href = `https://www.amazon.com/s?k=${q}`;
   $("googleLink").href = `https://www.google.com/search?tbm=shop&q=${q}`;
   $("tiktokLink").href = `https://www.tiktok.com/search?q=${q}`;
-  $("stockxLink").href = `https://stockx.com/search?s=${q}`;
+  $("alibabaLink").href = `https://www.alibaba.com/trade/search?fsb=y&IndexArea=product_en&SearchText=${encodeURIComponent(`${query} verified supplier`)}`;
+  $("dhgateLink").href = `https://www.dhgate.com/wholesale/search.do?act=search&searchkey=${q}`;
+  ["ebaySoldLink", "amazonLink", "googleLink", "tiktokLink", "alibabaLink", "dhgateLink"].forEach(id => {
+    const link = $(id);
+    link.classList.toggle("disabled", !query);
+    link.setAttribute("aria-disabled", String(!query));
+    if (!query) link.removeAttribute("href");
+  });
 }
 
 function marketInputKey() {
@@ -217,8 +224,8 @@ function syncMarketLookup() {
     lastMarketSnapshot = null;
     lastMarketInputKey = "";
     $("marketSnapshot").hidden = true;
-    $("marketUpdated").textContent = "Product changed · refresh required";
-    setMarketState("idle", "Product fields synced. Refresh Market Data to load listings for this product.");
+    $("marketUpdated").textContent = hasQuery ? "Product changed · refresh required" : "No market snapshot yet";
+    setMarketState("idle", hasQuery ? "Product fields synced. Refresh Market Data to load listings for this product." : "Enter a product name or identifier above.");
   } else if (!lastMarketSnapshot) {
     $("marketUpdated").textContent = hasQuery ? "Ready to search" : "No market snapshot yet";
     setMarketState("idle", hasQuery ? "Product fields synced. Refresh Market Data when you are ready." : "Enter a product name or identifier above.");
@@ -233,7 +240,7 @@ function setMarketState(state, message) {
   $("marketMessage").className = `market-message ${state === "error" ? "error" : state === "success" ? "success" : ""}`;
   $("marketMessage").textContent = message;
   badge.className = `data-label ${state === "success" ? "live" : state === "error" ? "offline" : "manual"}`;
-  badge.textContent = state === "loading" ? "SEARCHING" : state === "success" ? "LIVE SOURCES" : state === "error" ? "AGENT OFFLINE" : "AGENT CHECK";
+  badge.textContent = state === "loading" ? "SEARCHING" : state === "success" ? "LIVE SOURCES" : state === "error" ? "AGENT OFFLINE" : "READY";
 }
 
 function renderMarketSnapshot(data) {
@@ -267,8 +274,8 @@ async function refreshMarketData() {
   const identifier = $("productId").value.trim();
   const productName = $("productName").value.trim();
   if (!identifier && !productName) {
-    setMarketState("error", "Enter a UPC, ASIN, model number, or product name first.");
-    $("productId").focus();
+    setMarketState("idle", "Enter a UPC, ASIN, model number, or product name first.");
+    $("productName").focus();
     return;
   }
   setMarketState("loading", "Searching current public listings and checking exact-product matches…");
