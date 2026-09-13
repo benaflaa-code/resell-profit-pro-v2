@@ -89,7 +89,7 @@ function shippingEstimate() {
 }
 
 function snapshotInputs() {
-  const ids = ["productName","productId","source","buyPrice","purchaseTax","inboundCost","salePrice","weight","boxSize","prepCost","adRate","returnRate","shippingCost","targetProfit","targetRoi","targetMargin","budget","soldCount","activeCount"];
+  const ids = ["productName","productId","referenceUrl","source","buyPrice","purchaseTax","inboundCost","salePrice","weight","boxSize","prepCost","adRate","returnRate","shippingCost","targetProfit","targetRoi","targetMargin","budget","soldCount","activeCount"];
   return Object.fromEntries(ids.map(id => [id, $(id).value]));
 }
 
@@ -194,10 +194,12 @@ function renderAnalysis(a) {
 function updateResearchLinks() {
   const productName = $("productName").value.trim();
   const productId = $("productId").value.trim();
+  const referenceUrl = $("referenceUrl").value.trim();
   const query = [productName, productId].filter(Boolean).join(" ");
   const displayQuery = [productName, productId].filter(Boolean).join(" · ");
-  $("researchQuery").textContent = displayQuery || "Enter a product name or identifier.";
-  $("marketSyncPreview").textContent = displayQuery || "Enter a product name or identifier";
+  const preview = displayQuery || (referenceUrl ? "Product listing URL" : "Enter a product name, identifier, or URL.");
+  $("researchQuery").textContent = preview;
+  $("marketSyncPreview").textContent = preview;
   const q = encodeURIComponent(query);
   $("ebaySoldLink").href = `https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1&LH_Complete=1`;
   $("amazonLink").href = `https://www.amazon.com/s?k=${q}`;
@@ -214,12 +216,12 @@ function updateResearchLinks() {
 }
 
 function marketInputKey() {
-  return `${$("productName").value.trim()}\u0000${$("productId").value.trim()}`;
+  return `${$("productName").value.trim()}\u0000${$("productId").value.trim()}\u0000${$("referenceUrl").value.trim()}`;
 }
 
 function syncMarketLookup() {
   updateResearchLinks();
-  const hasQuery = $("productName").value.trim() || $("productId").value.trim();
+  const hasQuery = $("productName").value.trim() || $("productId").value.trim() || $("referenceUrl").value.trim();
   if (lastMarketSnapshot && marketInputKey() !== lastMarketInputKey) {
     lastMarketSnapshot = null;
     lastMarketInputKey = "";
@@ -249,21 +251,32 @@ function renderMarketSnapshot(data) {
   const product = data.product || {};
   const prices = data.prices || {};
   const listings = Array.isArray(data.listings) ? data.listings : [];
+  const alternatives = Array.isArray(data.alternatives) ? data.alternatives : [];
+  const specifications = Array.isArray(product.specifications) ? product.specifications : [];
   $("marketSnapshot").hidden = false;
   $("marketTitle").textContent = product.title || $("productName").value.trim() || "Product result";
   $("marketDescription").textContent = product.description || "Description unavailable from the current sources.";
+  $("marketSpecsWrap").hidden = specifications.length === 0;
+  $("marketSpecs").innerHTML = specifications.map(item => `<span><b>${escapeHTML(item.label)}</b>${escapeHTML(item.value)}</span>`).join("");
   $("marketIdType").textContent = String(data.identifier_type || "product").toUpperCase();
   $("marketConfidence").textContent = `${Math.round(Number(data.match_confidence) || 0)}% match`;
   $("marketLow").textContent = Number.isFinite(Number(prices.low)) ? money(Number(prices.low)) : "—";
   $("marketMedian").textContent = Number.isFinite(Number(prices.median)) ? money(Number(prices.median)) : "—";
   $("marketHigh").textContent = Number.isFinite(Number(prices.high)) ? money(Number(prices.high)) : "—";
-  $("marketListingCount").textContent = `${listings.length} comparable listing${listings.length === 1 ? "" : "s"}`;
+  $("marketListingCount").textContent = `${listings.length} exact-price source${listings.length === 1 ? "" : "s"}`;
   $("soldHistoryStatus").textContent = data.sold_history_available ? `${(data.sold_history || []).length} verified sales` : "Not available from public sources";
   const image = safeWebUrl(product.image_url);
   $("marketImageWrap").hidden = !image;
   if (image) { $("marketImage").src = image; $("marketImage").alt = product.title || "Product image"; }
   const safeListings = listings.slice(0, 8).map(item => ({ ...item, safeUrl: safeWebUrl(item.url) })).filter(item => item.safeUrl);
-  $("marketSources").innerHTML = safeListings.map(item => `<a class="market-source" href="${escapeHTML(item.safeUrl)}" target="_blank" rel="noopener"><span>${escapeHTML(item.title || item.source || "Source listing")}</span><strong>${Number.isFinite(Number(item.total_price ?? item.price)) ? money(Number(item.total_price ?? item.price)) : "View"}</strong></a>`).join("") || '<span class="subtle">No exact priced listings were returned.</span>';
+  $("marketSources").innerHTML = safeListings.map(item => `<a class="market-source" href="${escapeHTML(item.safeUrl)}" target="_blank" rel="noopener"><span><small>EXACT · ${escapeHTML(item.source || "source")}</small>${escapeHTML(item.title || "Source listing")}</span><strong>${Number.isFinite(Number(item.total_price ?? item.price)) ? money(Number(item.total_price ?? item.price)) : "View"}</strong></a>`).join("") || '<span class="subtle">No exact priced listings were returned.</span>';
+  const safeAlternatives = alternatives.slice(0, 8).map(item => ({ ...item, safeUrl: safeWebUrl(item.url) })).filter(item => item.safeUrl);
+  $("alternativeCount").textContent = `${safeAlternatives.length} alternative${safeAlternatives.length === 1 ? "" : "s"}`;
+  $("marketAlternatives").innerHTML = safeAlternatives.map(item => {
+    const specs = Object.entries(item.specifications || {}).slice(0, 5).map(([label,value]) => `${escapeHTML(label)}: ${escapeHTML(value)}`).join(" · ");
+    const differences = (item.differences || []).slice(0, 3).map(value => `<li>${escapeHTML(value)}</li>`).join("");
+    return `<a class="market-alternative" href="${escapeHTML(item.safeUrl)}" target="_blank" rel="noopener"><span class="alternative-top"><b>${escapeHTML(item.source || "source")}</b><em>${Math.round(Number(item.spec_similarity) || 0)}% spec match</em><strong>${Number.isFinite(Number(item.total_price ?? item.price)) ? money(Number(item.total_price ?? item.price)) : "View"}</strong></span><span class="alternative-title">${escapeHTML(item.title || "Comparable product")}</span>${specs ? `<small>${specs}</small>` : ""}${differences ? `<ul>${differences}</ul>` : '<small>Published specifications did not expose a measurable difference.</small>'}</a>`;
+  }).join("") || '<span class="subtle">No trustworthy spec-matched alternatives were found in this search.</span>';
   $("marketUpdated").textContent = `Checked ${new Date(data.checked_at || Date.now()).toLocaleString()}`;
   const conservative = Number(prices.conservative ?? prices.low ?? prices.median);
   $("useMarketPrice").disabled = !Number.isFinite(conservative) || conservative <= 0;
@@ -273,8 +286,9 @@ function renderMarketSnapshot(data) {
 async function refreshMarketData() {
   const identifier = $("productId").value.trim();
   const productName = $("productName").value.trim();
-  if (!identifier && !productName) {
-    setMarketState("idle", "Enter a UPC, ASIN, model number, or product name first.");
+  const referenceUrl = $("referenceUrl").value.trim();
+  if (!identifier && !productName && !referenceUrl) {
+    setMarketState("idle", "Enter a UPC, ASIN, model number, product name, or listing URL first.");
     $("productName").focus();
     return;
   }
@@ -283,7 +297,7 @@ async function refreshMarketData() {
     const response = await fetch("/api/market-lookup", {
       method: "POST",
       headers: { "content-type": "application/json", ...agentHeaders() },
-      body: JSON.stringify({ identifier, product_name: productName })
+      body: JSON.stringify({ identifier, product_name: productName, reference_url: referenceUrl })
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -300,7 +314,7 @@ async function refreshMarketData() {
       throw error;
     }
     renderMarketSnapshot(data);
-    setMarketState("success", "Fresh public listings loaded. Review the exact variant and condition before using the price.");
+    setMarketState("success", "Exact-product offers and spec-matched alternatives loaded. Alternatives never change the exact price range.");
   } catch (error) {
     $("marketSnapshot").hidden = true;
     if (error.code === "no_exact_match") {
@@ -349,7 +363,7 @@ function renderFeeSettings(){ $("feeSettings").innerHTML=Object.entries(fees).ma
 
 $("analysisForm").addEventListener("submit",e=>{e.preventDefault();analyze();toast("Analysis updated")});
 $("analysisForm").addEventListener("input",()=>analyze());
-[$("productName"),$("productId")].forEach(input=>input.addEventListener("input",syncMarketLookup));
+[$("productName"),$("productId"),$("referenceUrl")].forEach(input=>input.addEventListener("input",syncMarketLookup));
 $("weight").addEventListener("change",()=>{$("shippingCost").value=shippingEstimate();analyze()});
 $("boxSize").addEventListener("change",()=>{$("shippingCost").value=shippingEstimate();analyze()});
 document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>showView(t.dataset.view)));

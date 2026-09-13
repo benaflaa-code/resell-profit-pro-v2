@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#10151f">
   <title>Resell Profit Pro v2</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2310151f'/%3E%3Cpath d='M17 43V21h15c9 0 15 4 15 11s-6 11-15 11H17Zm10-8h6c3 0 5-1 5-3s-2-3-5-3h-6v6Z' fill='%23ff8a3d'/%3E%3Cpath d='m38 42 9-9 5 5-9 9z' fill='%23b6f36b'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css?v=10">
+  <link rel="stylesheet" href="styles.css?v=11">
 </head>
 <body>
   <header class="topbar">
@@ -49,6 +49,9 @@
             </label>
             <label class="field">Source
               <input id="source" type="text" placeholder="Nike Factory Store">
+            </label>
+            <label class="field span-2">Product listing URL <small>Optional · improves specification matching</small>
+              <input id="referenceUrl" type="url" placeholder="Paste the Amazon, Walmart, brand, or retailer product page">
             </label>
           </div>
 
@@ -195,10 +198,14 @@
                 <p id="marketDescription">—</p>
               </div>
             </div>
+            <div id="marketSpecsWrap" class="market-specs-wrap" hidden>
+              <strong>Product specifications</strong>
+              <div id="marketSpecs" class="market-specs"></div>
+            </div>
             <div class="market-price-grid">
-              <div><span>Low</span><strong id="marketLow">—</strong></div>
-              <div class="recommended"><span>Median asking</span><strong id="marketMedian">—</strong></div>
-              <div><span>High</span><strong id="marketHigh">—</strong></div>
+              <div><span>Exact offer low</span><strong id="marketLow">—</strong></div>
+              <div class="recommended"><span>Exact median</span><strong id="marketMedian">—</strong></div>
+              <div><span>Exact offer high</span><strong id="marketHigh">—</strong></div>
             </div>
             <div class="snapshot-actions">
               <button id="useMarketPrice" type="button" class="secondary-button">Use conservative price</button>
@@ -206,6 +213,9 @@
             </div>
             <div class="sold-history-head"><strong>Sale history</strong><span id="soldHistoryStatus" class="subtle">Not available</span></div>
             <div id="marketSources" class="market-sources"></div>
+            <div class="alternative-head"><strong>Spec-matched alternatives</strong><span id="alternativeCount" class="subtle">0 alternatives</span></div>
+            <p class="alternative-note">Alternative prices are shown separately and never change the exact-product price range.</p>
+            <div id="marketAlternatives" class="market-alternatives"></div>
           </section>
           <div class="research-links">
             <a id="ebaySoldLink" target="_blank" rel="noopener">eBay sold</a>
@@ -316,6 +326,6 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=10"></script>
+  <script src="app.js?v=11"></script>
 </body>
 </html>

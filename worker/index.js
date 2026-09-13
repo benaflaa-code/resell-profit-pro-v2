@@ -66,7 +66,8 @@ async function marketLookup(request, env) {
   try { body = await request.json(); } catch { return json({ error: "invalid_json", message: "Invalid request." }, 400); }
   const identifier = String(body?.identifier || "").trim().slice(0, 120);
   const productName = String(body?.product_name || "").trim().slice(0, 180);
-  if (!identifier && !productName) return json({ error: "missing_query", message: "Enter a product identifier or name." }, 400);
+  const referenceUrl = String(body?.reference_url || "").trim().slice(0, 1000);
+  if (!identifier && !productName && !referenceUrl) return json({ error: "missing_query", message: "Enter a product identifier, name, or listing URL." }, 400);
 
   const endpoint = new URL("/lookup", connection.url);
   const headers = { "content-type": "application/json", "user-agent": "ResellProfitPro/2.1" };
@@ -76,7 +77,7 @@ async function marketLookup(request, env) {
     const response = await fetch(endpoint, {
       method: "POST",
       headers,
-      body: JSON.stringify({ identifier, product_name: productName }),
+      body: JSON.stringify({ identifier, product_name: productName, reference_url: referenceUrl }),
       signal: AbortSignal.timeout(45000)
     });
     const payload = await response.json().catch(() => ({ error: "invalid_agent_response" }));

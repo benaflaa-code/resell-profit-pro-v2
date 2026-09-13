@@ -12,7 +12,8 @@ https://resell-profit-pro-v2.amineben.chatgpt.site
 - Five-marketplace comparison with editable planning assumptions
 - Conservative, expected, and optimistic outcomes
 - Seller-paid U.S. shipping estimate
-- Product research links and manually verified comparable sales
+- One-click exact-offer and specification-matched alternative comparison
+- Optional retailer URL input for more precise product and specification extraction
 - Refreshable market snapshots from a self-hosted open-source price agent
 - Browser-persistent Product Idea Book
 - Actual-versus-forecast post-sale review
@@ -42,6 +43,8 @@ For an always-on deployment, site administrators can instead configure private `
 The hosted app remains usable without the agent: manual marketplace links and comparable-sale entry continue to work. Public sites can restrict or block automated access, so every result includes its source and must be checked before buying.
 
 The agent requires an exact normalized UPC, ASIN, or model-number match whenever an identifier is entered. It returns “No exact match” instead of pricing a semantically similar but unrelated result. Product-name-only searches must pass a strict word-overlap check before Ollama summarizes the surviving listings.
+
+Market refresh keeps exact-product offers separate from alternative products. It extracts published specifications such as pressure, voltage, airflow, battery capacity, power source, auto-stop, and LED lighting when available, then labels alternatives with a specification-match score and the measurable differences. Alternative prices never enter the exact-product low, median, high, or conservative price.
 
 ## Run locally
 
