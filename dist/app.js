@@ -21,6 +21,7 @@ let ideas = safeJSON("rpp2_ideas", []);
 let comps = [];
 let lastAnalysis = null;
 let lastMarketSnapshot = null;
+let lastMarketInputKey = "";
 let currentFilter = "All";
 let agentConnection = safeJSON("rpp2_agent_connection", { url: "", token: "" });
 
@@ -191,14 +192,37 @@ function renderAnalysis(a) {
 }
 
 function updateResearchLinks() {
-  const query = $("productId").value.trim() || $("productName").value.trim();
-  $("researchQuery").textContent = query || "Enter a product name or identifier.";
+  const productName = $("productName").value.trim();
+  const productId = $("productId").value.trim();
+  const query = [productName, productId].filter(Boolean).join(" ");
+  const displayQuery = [productName, productId].filter(Boolean).join(" · ");
+  $("researchQuery").textContent = displayQuery || "Enter a product name or identifier.";
+  $("marketSyncPreview").textContent = displayQuery || "Enter a product name or identifier";
   const q = encodeURIComponent(query);
   $("ebaySoldLink").href = `https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1&LH_Complete=1`;
   $("amazonLink").href = `https://www.amazon.com/s?k=${q}`;
   $("googleLink").href = `https://www.google.com/search?tbm=shop&q=${q}`;
   $("tiktokLink").href = `https://www.tiktok.com/search?q=${q}`;
   $("stockxLink").href = `https://stockx.com/search?s=${q}`;
+}
+
+function marketInputKey() {
+  return `${$("productName").value.trim()}\u0000${$("productId").value.trim()}`;
+}
+
+function syncMarketLookup() {
+  updateResearchLinks();
+  const hasQuery = $("productName").value.trim() || $("productId").value.trim();
+  if (lastMarketSnapshot && marketInputKey() !== lastMarketInputKey) {
+    lastMarketSnapshot = null;
+    lastMarketInputKey = "";
+    $("marketSnapshot").hidden = true;
+    $("marketUpdated").textContent = "Product changed · refresh required";
+    setMarketState("idle", "Product fields synced. Refresh Market Data to load listings for this product.");
+  } else if (!lastMarketSnapshot) {
+    $("marketUpdated").textContent = hasQuery ? "Ready to search" : "No market snapshot yet";
+    setMarketState("idle", hasQuery ? "Product fields synced. Refresh Market Data when you are ready." : "Enter a product name or identifier above.");
+  }
 }
 
 function setMarketState(state, message) {
@@ -214,6 +238,7 @@ function setMarketState(state, message) {
 
 function renderMarketSnapshot(data) {
   lastMarketSnapshot = data;
+  lastMarketInputKey = marketInputKey();
   const product = data.product || {};
   const prices = data.prices || {};
   const listings = Array.isArray(data.listings) ? data.listings : [];
@@ -303,12 +328,13 @@ function renderFeeSettings(){ $("feeSettings").innerHTML=Object.entries(fees).ma
 
 $("analysisForm").addEventListener("submit",e=>{e.preventDefault();analyze();toast("Analysis updated")});
 $("analysisForm").addEventListener("input",()=>analyze());
+[$("productName"),$("productId")].forEach(input=>input.addEventListener("input",syncMarketLookup));
 $("weight").addEventListener("change",()=>{$("shippingCost").value=shippingEstimate();analyze()});
 $("boxSize").addEventListener("change",()=>{$("shippingCost").value=shippingEstimate();analyze()});
 document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>showView(t.dataset.view)));
 document.querySelectorAll("[data-go]").forEach(t=>t.addEventListener("click",()=>showView(t.dataset.go)));
 $("newAnalysisButton").addEventListener("click",()=>showView("analyze"));
-$("resetButton").addEventListener("click",()=>{ $("analysisForm").reset(); $("shippingCost").value=shippingEstimate(); comps=[]; renderComps(); toast("Quote reset") });
+$("resetButton").addEventListener("click",()=>{ $("analysisForm").reset(); $("shippingCost").value=shippingEstimate(); comps=[]; lastMarketSnapshot=null; lastMarketInputKey=""; $("marketSnapshot").hidden=true; renderComps(); syncMarketLookup(); toast("Quote reset") });
 $("saveIdeaButton").addEventListener("click",()=>{ $("ideaName").value=$("productName").value.trim()||"Untitled product idea"; $("saveDialog").showModal() });
 document.querySelectorAll(".close-save").forEach(b=>b.addEventListener("click",()=>$("saveDialog").close()));
 $("saveForm").addEventListener("submit",e=>{e.preventDefault();saveIdea($("ideaName").value.trim(),$("ideaStatus").value,$("ideaNotes").value.trim());$("saveDialog").close()});
@@ -317,6 +343,7 @@ $("compInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefau
 $("compChips").addEventListener("click",e=>{const b=e.target.closest("[data-comp]");if(b){comps.splice(Number(b.dataset.comp),1);renderComps()}});
 $("clearComps").addEventListener("click",()=>{comps=[];renderComps()});
 $("refreshMarketButton").addEventListener("click",refreshMarketData);
+$("quickMarketButton").addEventListener("click",()=>{$("marketLookupPanel").scrollIntoView({behavior:"smooth",block:"start"});void refreshMarketData()});
 $("useMarketPrice").addEventListener("click",()=>{const price=Number($("useMarketPrice").dataset.price);if(price>0){$("salePrice").value=price.toFixed(2);analyze();toast("Conservative market price applied")}});
 $("settingsButton").addEventListener("click",()=>{renderFeeSettings();populateAgentSettings();$("settingsDialog").showModal()});
 document.querySelectorAll(".close-settings").forEach(button=>button.addEventListener("click",()=>$("settingsDialog").close()));

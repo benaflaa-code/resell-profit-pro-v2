@@ -52,6 +52,11 @@
             </label>
           </div>
 
+          <div class="market-sync-row">
+            <div><span>Market lookup synced</span><strong id="marketSyncPreview">Nike Air Max — example</strong></div>
+            <button id="quickMarketButton" type="button" class="secondary-button">Refresh market</button>
+          </div>
+
           <h3>Buy</h3>
           <div class="field-grid three">
             <label class="field">Unit price
@@ -173,9 +178,9 @@
       </section>
 
       <section class="research-grid">
-        <div class="panel market-panel">
-          <div class="panel-head wrap"><div><h2>Market lookup</h2><p>Enter a UPC, ASIN, or exact model above.</p></div><span id="marketStatusBadge" class="data-label manual">AGENT CHECK</span></div>
-          <div id="researchQuery" class="query-preview">Enter a product name or identifier.</div>
+        <div id="marketLookupPanel" class="panel market-panel">
+          <div class="panel-head wrap"><div><h2>Market lookup</h2><p>Automatically uses Product name and UPC/model/ASIN from Product & deal.</p></div><span id="marketStatusBadge" class="data-label manual">AGENT CHECK</span></div>
+          <div class="query-preview"><span>Searching for</span><strong id="researchQuery">Enter a product name or identifier.</strong></div>
           <div class="market-actions">
             <button id="refreshMarketButton" type="button" class="primary-button refresh-button"><span aria-hidden="true">&#8635;</span> Refresh market data</button>
             <small id="marketUpdated" class="subtle">No market snapshot yet</small>
@@ -310,6 +315,6 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=7"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>
