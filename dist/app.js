@@ -299,7 +299,7 @@ function escapeHTML(value){ return String(value).replace(/[&<>'"]/g,c=>({"&":"&a
 function safeWebUrl(value){try{const url=new URL(String(value||""));return ["http:","https:"].includes(url.protocol)?url.href:""}catch{return ""}}
 function toast(message){ const el=$("toast");el.textContent=message;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2200); }
 
-function renderFeeSettings(){ $("feeSettings").innerHTML=Object.entries(fees).map(([name,f])=>`<div class="fee-row" data-platform="${escapeHTML(name)}"><label>${escapeHTML(name)}</label><label><input class="rate" type="number" min="0" step="0.1" value="${f.rate}"> %</label><label><input class="fixed" type="number" min="0" step="0.01" value="${f.fixed}"> fixed</label></div>`).join(""); }
+function renderFeeSettings(){ $("feeSettings").innerHTML=Object.entries(fees).map(([name,f])=>`<div class="fee-row" data-platform="${escapeHTML(name)}"><label>${escapeHTML(name)}</label><label><input class="rate" type="number" min="0" step="0.01" value="${f.rate}"> %</label><label><input class="fixed" type="number" min="0" step="0.01" value="${f.fixed}"> fixed</label></div>`).join(""); }
 
 $("analysisForm").addEventListener("submit",e=>{e.preventDefault();analyze();toast("Analysis updated")});
 $("analysisForm").addEventListener("input",()=>analyze());
