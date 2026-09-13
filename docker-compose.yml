@@ -1,0 +1,39 @@
+services:
+  searxng:
+    image: ghcr.io/searxng/searxng:latest
+    restart: unless-stopped
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama-data:/root/.ollama
+
+  ollama-init:
+    image: ollama/ollama:latest
+    depends_on:
+      - ollama
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    command: ["pull", "qwen3:4b"]
+    restart: "no"
+
+  market-agent:
+    build: ./agent
+    restart: unless-stopped
+    depends_on:
+      - searxng
+      - ollama
+    environment:
+      SEARXNG_URL: http://searxng:8080
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: qwen3:4b
+      AGENT_TOKEN: ${AGENT_TOKEN:?Set AGENT_TOKEN in .env}
+      MAX_RESULTS: 7
+    ports:
+      - "127.0.0.1:8787:8787"
+
+volumes:
+  ollama-data:

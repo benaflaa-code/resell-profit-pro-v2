@@ -1,0 +1,15 @@
+use_default_settings: true
+
+server:
+  secret_key: "replace-this-local-secret"
+  bind_address: "0.0.0.0"
+  port: 8080
+
+search:
+  safe_search: 1
+  formats:
+    - html
+    - json
+
+ui:
+  static_use_hash: true
