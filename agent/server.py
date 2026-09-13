@@ -11,9 +11,10 @@ from urllib.parse import urlparse
 import httpx
 from bs4 import BeautifulSoup
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-app = FastAPI(title="Resell Profit Pro Market Agent", version="1.0.0")
+app = FastAPI(title="Resell Profit Pro Market Agent", version="1.1.0")
 
 SEARXNG_URL = os.getenv("SEARXNG_URL", "http://searxng:8080").rstrip("/")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://ollama:11434").rstrip("/")
@@ -21,6 +22,8 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:4b")
 AGENT_TOKEN = os.getenv("AGENT_TOKEN", "")
 MAX_RESULTS = min(10, max(3, int(os.getenv("MAX_RESULTS", "7"))))
 PRICE_RE = re.compile(r"(?:US\s*)?\$\s*([0-9]{1,6}(?:,[0-9]{3})*(?:\.[0-9]{2})?)")
+WORD_RE = re.compile(r"[a-z0-9]+")
+NAME_STOPWORDS = {"a", "an", "and", "at", "by", "for", "from", "in", "new", "of", "on", "or", "price", "sale", "the", "to", "with"}
 
 
 class LookupRequest(BaseModel):
@@ -65,6 +68,32 @@ def first_price(text: str) -> float | None:
     return value if 0.5 <= value <= 100000 else None
 
 
+def compact_identifier(value: str) -> str:
+    return re.sub(r"[^A-Z0-9]", "", value.upper())
+
+
+def contains_identifier(identifier: str, text: str) -> bool:
+    target = compact_identifier(identifier)
+    return bool(target and target in compact_identifier(text))
+
+
+def product_name_score(product_name: str, text: str) -> float:
+    target_tokens = [token for token in WORD_RE.findall(product_name.lower()) if token not in NAME_STOPWORDS]
+    if not target_tokens:
+        return 0.0
+    candidate_tokens = set(WORD_RE.findall(text.lower()))
+    matches = sum(1 for token in set(target_tokens) if token in candidate_tokens)
+    return matches / len(set(target_tokens))
+
+
+def reliable_name_match(product_name: str, text: str) -> bool:
+    target_count = len({token for token in WORD_RE.findall(product_name.lower()) if token not in NAME_STOPWORDS})
+    if target_count == 0:
+        return False
+    threshold = 1.0 if target_count == 1 else 0.66 if target_count <= 3 else 0.5
+    return product_name_score(product_name, text) >= threshold
+
+
 def jsonld_products(value):
     if isinstance(value, list):
         for item in value:
@@ -95,7 +124,7 @@ def offer_price(offers) -> float | None:
     return None
 
 
-async def inspect_result(client: httpx.AsyncClient, result: dict, identifier: str) -> dict | None:
+async def inspect_result(client: httpx.AsyncClient, result: dict, identifier: str, product_name: str) -> dict | None:
     url = str(result.get("url") or "")
     if not public_web_url(url):
         return None
@@ -137,7 +166,9 @@ async def inspect_result(client: httpx.AsyncClient, result: dict, identifier: st
         pass
     if price is None:
         return None
-    identifier_match = bool(identifier and identifier.lower().replace("-", "") in f"{title} {snippet}".lower().replace("-", ""))
+    evidence = f"{title} {snippet} {description} {url}"
+    identifier_match = contains_identifier(identifier, evidence)
+    name_score = product_name_score(product_name, evidence) if product_name else 0.0
     return {
         "title": title[:220] or urlparse(url).netloc,
         "description": description[:420],
@@ -148,15 +179,16 @@ async def inspect_result(client: httpx.AsyncClient, result: dict, identifier: st
         "shipping_included": False,
         "image_url": image,
         "identifier_match": identifier_match,
+        "name_match_score": round(name_score, 3),
     }
 
 
 async def ollama_summary(query: str, listings: list[dict]) -> dict | None:
     if not listings:
         return None
-    compact = [{"title": x["title"], "description": x["description"], "source": x["source"], "price": x["price"], "identifier_match": x["identifier_match"]} for x in listings]
+    compact = [{"title": x["title"], "description": x["description"], "source": x["source"], "price": x["price"], "identifier_match": x["identifier_match"], "name_match_score": x["name_match_score"]} for x in listings]
     prompt = (
-        "You validate resale product matches. Based only on the JSON listings, return strict JSON with "
+        "You validate resale product matches. Every listing has already passed deterministic identity checks. Based only on the JSON listings, return strict JSON with "
         'keys title, description, match_confidence (0-100). Do not invent specifications or prices. '
         f"Target: {query}\nListings: {json.dumps(compact)}"
     )
@@ -194,27 +226,40 @@ async def lookup(body: LookupRequest, authorization: str | None = Header(default
     product_name = body.product_name.strip()
     if not identifier and not product_name:
         raise HTTPException(status_code=400, detail="A product identifier or name is required")
-    query = " ".join(x for x in (identifier, product_name, "price") if x)
+    query = " ".join(x for x in ((f'"{identifier}"' if identifier else ""), product_name, "price") if x)
 
     async with httpx.AsyncClient(timeout=10, headers={"user-agent": "Mozilla/5.0 ResellProfitPro/2.1"}) as client:
         try:
             search = await client.get(f"{SEARXNG_URL}/search", params={"q": query, "format": "json", "language": "en-US", "safesearch": 1})
             search.raise_for_status()
-            raw_results = search.json().get("results", [])[:MAX_RESULTS]
+            raw_results = search.json().get("results", [])[:MAX_RESULTS * 2]
         except (httpx.HTTPError, json.JSONDecodeError) as exc:
             raise HTTPException(status_code=502, detail="Search service unavailable") from exc
-        inspected = await asyncio.gather(*(inspect_result(client, item, identifier) for item in raw_results))
+        inspected = await asyncio.gather(*(inspect_result(client, item, identifier, product_name) for item in raw_results))
 
     listings = [item for item in inspected if item]
     exact = [item for item in listings if item["identifier_match"]]
-    if exact:
+    if identifier:
+        if not exact:
+            return JSONResponse(status_code=422, content={
+                "error": "no_exact_match",
+                "message": f'No reliable listing contained the exact {identifier_type(identifier).lower()} “{identifier}”. Add the product name or use the manual marketplace links.'
+            })
         listings = exact
+    elif product_name:
+        listings = [item for item in listings if reliable_name_match(product_name, f'{item["title"]} {item["description"]}')]
+        if not listings:
+            return JSONResponse(status_code=422, content={
+                "error": "no_exact_match",
+                "message": "No reliable listing matched enough of the product name. Add a UPC, ASIN, or model number for a stricter search."
+            })
+    listings = listings[:MAX_RESULTS]
     listings.sort(key=lambda item: item["price"])
     values = [item["price"] for item in listings]
     q1_index = max(0, round((len(values) - 1) * 0.25)) if values else 0
     summary = await ollama_summary(query, listings)
     lead = listings[0] if listings else {}
-    confidence = summary["match_confidence"] if summary else (88 if exact else 58 if listings else 0)
+    confidence = max(80, summary["match_confidence"]) if summary else (92 if identifier else 82)
     return {
         "identifier_type": identifier_type(identifier),
         "query": query,

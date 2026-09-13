@@ -237,10 +237,10 @@ function setMarketState(state, message) {
   const badge = $("marketStatusBadge");
   button.disabled = state === "loading";
   button.classList.toggle("loading", state === "loading");
-  $("marketMessage").className = `market-message ${state === "error" ? "error" : state === "success" ? "success" : ""}`;
+  $("marketMessage").className = `market-message ${state === "offline" || state === "error" ? "error" : state === "nomatch" ? "warning" : state === "success" ? "success" : ""}`;
   $("marketMessage").textContent = message;
-  badge.className = `data-label ${state === "success" ? "live" : state === "error" ? "offline" : "manual"}`;
-  badge.textContent = state === "loading" ? "SEARCHING" : state === "success" ? "LIVE SOURCES" : state === "error" ? "AGENT OFFLINE" : "READY";
+  badge.className = `data-label ${state === "success" ? "live" : state === "offline" || state === "error" ? "offline" : state === "nomatch" ? "warning" : "manual"}`;
+  badge.textContent = state === "loading" ? "SEARCHING" : state === "success" ? "LIVE SOURCES" : state === "offline" ? "AGENT OFFLINE" : state === "error" ? "LOOKUP ERROR" : state === "nomatch" ? "NO EXACT MATCH" : "READY";
 }
 
 function renderMarketSnapshot(data) {
@@ -291,14 +291,28 @@ async function refreshMarketData() {
         renderFeeSettings();
         populateAgentSettings();
         $("settingsDialog").showModal();
-        throw new Error("Connect your local agent in Settings, then refresh again. Manual marketplace links remain available below.");
+        const error = new Error("Connect your local agent in Settings, then refresh again. Manual marketplace links remain available below.");
+        error.code = data.error;
+        throw error;
       }
-      throw new Error(data.message || "The market agent could not complete this lookup.");
+      const error = new Error(data.message || "The market agent could not complete this lookup.");
+      error.code = data.error;
+      throw error;
     }
     renderMarketSnapshot(data);
     setMarketState("success", "Fresh public listings loaded. Review the exact variant and condition before using the price.");
   } catch (error) {
-    setMarketState("error", error.message || "The market agent is unavailable. Try again or use the manual links.");
+    $("marketSnapshot").hidden = true;
+    if (error.code === "no_exact_match") {
+      $("marketUpdated").textContent = "No reliable exact match";
+      setMarketState("nomatch", error.message);
+    } else if (error.code === "agent_unavailable" || error instanceof TypeError) {
+      $("marketUpdated").textContent = "Agent connection failed";
+      setMarketState("offline", error.message || "The market agent is unavailable. Try again or use the manual links.");
+    } else {
+      $("marketUpdated").textContent = "Lookup could not be completed";
+      setMarketState("error", error.message || "The lookup could not be completed. Try again or use the manual links.");
+    }
   }
 }
 

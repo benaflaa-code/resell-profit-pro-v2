@@ -9,7 +9,7 @@ https://resell-profit-pro-v2.amineben.chatgpt.site
 ## Included
 
 - Maximum safe buying price using profit, margin, and ROI guardrails
-- Six-marketplace comparison with editable planning assumptions
+- Five-marketplace comparison with editable planning assumptions
 - Conservative, expected, and optimistic outcomes
 - Seller-paid U.S. shipping estimate
 - Product research links and manually verified comparable sales
@@ -40,6 +40,8 @@ The included Docker setup runs three local services:
 For an always-on deployment, site administrators can instead configure private `PRICE_AGENT_URL` and `PRICE_AGENT_TOKEN` runtime variables. Quick Tunnel addresses change when the tunnel restarts and are intended for testing.
 
 The hosted app remains usable without the agent: manual marketplace links and comparable-sale entry continue to work. Public sites can restrict or block automated access, so every result includes its source and must be checked before buying.
+
+The agent requires an exact normalized UPC, ASIN, or model-number match whenever an identifier is entered. It returns “No exact match” instead of pricing a semantically similar but unrelated result. Product-name-only searches must pass a strict word-overlap check before Ollama summarizes the surviving listings.
 
 ## Run locally
 
