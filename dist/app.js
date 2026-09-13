@@ -251,6 +251,9 @@ function renderMarketSnapshot(data) {
   const product = data.product || {};
   const prices = data.prices || {};
   const listings = Array.isArray(data.listings) ? data.listings : [];
+  const wholesale = Array.isArray(data.wholesale_offers) ? data.wholesale_offers : [];
+  const soldHistory = Array.isArray(data.sold_history) ? data.sold_history : [];
+  const outliers = Array.isArray(data.excluded_outliers) ? data.excluded_outliers : [];
   const alternatives = Array.isArray(data.alternatives) ? data.alternatives : [];
   const specifications = Array.isArray(product.specifications) ? product.specifications : [];
   $("marketSnapshot").hidden = false;
@@ -263,13 +266,42 @@ function renderMarketSnapshot(data) {
   $("marketLow").textContent = Number.isFinite(Number(prices.low)) ? money(Number(prices.low)) : "—";
   $("marketMedian").textContent = Number.isFinite(Number(prices.median)) ? money(Number(prices.median)) : "—";
   $("marketHigh").textContent = Number.isFinite(Number(prices.high)) ? money(Number(prices.high)) : "—";
-  $("marketListingCount").textContent = `${listings.length} exact-price source${listings.length === 1 ? "" : "s"}`;
-  $("soldHistoryStatus").textContent = data.sold_history_available ? `${(data.sold_history || []).length} verified sales` : "Not available from public sources";
+  $("marketListingCount").textContent = `${listings.length} retail source${listings.length === 1 ? "" : "s"}`;
+  $("soldHistoryStatus").textContent = data.sold_history_available ? `${soldHistory.length} verified record${soldHistory.length === 1 ? "" : "s"}` : "No verified sold records found";
   const image = safeWebUrl(product.image_url);
   $("marketImageWrap").hidden = !image;
   if (image) { $("marketImage").src = image; $("marketImage").alt = product.title || "Product image"; }
   const safeListings = listings.slice(0, 8).map(item => ({ ...item, safeUrl: safeWebUrl(item.url) })).filter(item => item.safeUrl);
-  $("marketSources").innerHTML = safeListings.map(item => `<a class="market-source" href="${escapeHTML(item.safeUrl)}" target="_blank" rel="noopener"><span><small>EXACT · ${escapeHTML(item.source || "source")}</small>${escapeHTML(item.title || "Source listing")}</span><strong>${Number.isFinite(Number(item.total_price ?? item.price)) ? money(Number(item.total_price ?? item.price)) : "View"}</strong></a>`).join("") || '<span class="subtle">No exact priced listings were returned.</span>';
+  $("marketSources").innerHTML = safeListings.map(item => `<a class="market-source" href="${escapeHTML(item.safeUrl)}" target="_blank" rel="noopener"><span><small>RETAIL · ${escapeHTML(item.source || "source")} · ${escapeHTML(item.price_basis || "listed item")}</small>${escapeHTML(item.title || "Source listing")}</span><strong>${Number.isFinite(Number(item.unit_price ?? item.price)) ? `${money(Number(item.unit_price ?? item.price))}/unit` : "View"}</strong></a>`).join("") || '<span class="subtle">No clean retail offers were returned.</span>';
+  const safeWholesale = wholesale.slice(0, 8).map(item => ({ ...item, safeUrl: safeWebUrl(item.url) })).filter(item => item.safeUrl);
+  $("wholesaleCount").textContent = `${safeWholesale.length} offer${safeWholesale.length === 1 ? "" : "s"}`;
+  $("marketWholesale").innerHTML = safeWholesale.map(item => {
+    const unit = Number(item.unit_price ?? item.price);
+    const moq = Math.max(1, Number(item.minimum_order_quantity) || 1);
+    const minimum = Number(item.minimum_order_cost ?? unit * moq);
+    return `<a class="market-alternative wholesale-offer" href="${escapeHTML(item.safeUrl)}" target="_blank" rel="noopener"><span class="alternative-top"><b>WHOLESALE · ${escapeHTML(item.source || "source")}</b><em>MOQ ${moq}</em><strong>${Number.isFinite(unit) ? `${money(unit)}/unit` : "View"}</strong></span><span class="alternative-title">${escapeHTML(item.title || "Wholesale offer")}</span><small>Minimum merchandise order ${Number.isFinite(minimum) ? money(minimum) : "unknown"} · ${escapeHTML(item.price_basis || "price basis unknown")} · shipping/duties not confirmed</small></a>`;
+  }).join("") || '<span class="subtle">No exact wholesale offer was found.</span>';
+  const safeSales = soldHistory.slice(0, 8).map(item => ({ ...item, safeUrl: safeWebUrl(item.url) })).filter(item => item.safeUrl);
+  $("soldHistoryList").innerHTML = safeSales.map(item => `<a class="market-source sold-source" href="${escapeHTML(item.safeUrl)}" target="_blank" rel="noopener"><span><small>VERIFIED SOLD · ${escapeHTML(item.source || "source")}</small>${escapeHTML(item.title || "Completed sale")}</span><strong>${Number.isFinite(Number(item.unit_price ?? item.price)) ? money(Number(item.unit_price ?? item.price)) : "View"}</strong></a>`).join("") || '<span class="subtle">Asking prices are not used as sale history.</span>';
+  $("outlierSection").hidden = outliers.length === 0;
+  $("outlierCount").textContent = `${outliers.length} excluded`;
+  $("marketOutliers").innerHTML = outliers.slice(0, 8).map(item => {
+    const safeUrl = safeWebUrl(item.url);
+    const content = `<span class="alternative-top"><b>${escapeHTML(item.source || "source")}</b><em>NOT IN RANGE</em><strong>${Number.isFinite(Number(item.unit_price ?? item.price)) ? `${money(Number(item.unit_price ?? item.price))}/unit` : "View"}</strong></span><span class="alternative-title">${escapeHTML(item.title || "Price anomaly")}</span><small>${escapeHTML(item.outlier_reason || "This price is outside the coherent comparison range.")}</small>`;
+    return safeUrl ? `<a class="market-alternative outlier-offer" href="${escapeHTML(safeUrl)}" target="_blank" rel="noopener">${content}</a>` : `<div class="market-alternative outlier-offer">${content}</div>`;
+  }).join("");
+  const bestRetail = data.best_retail_deal || listings[0] || null;
+  const bestWholesale = data.best_wholesale_deal || wholesale[0] || null;
+  const retailUnit = Number(bestRetail?.unit_price ?? bestRetail?.price);
+  const wholesaleUnit = Number(bestWholesale?.unit_price ?? bestWholesale?.price);
+  $("bestRetailPrice").textContent = Number.isFinite(retailUnit) ? `${money(retailUnit)}/unit` : "—";
+  $("bestRetailDetail").textContent = bestRetail ? `${bestRetail.source || "Retail source"} · listed quantity ${bestRetail.pack_quantity || 1}` : "No retail offer";
+  $("bestWholesalePrice").textContent = Number.isFinite(wholesaleUnit) ? `${money(wholesaleUnit)}/unit` : "—";
+  $("bestWholesaleDetail").textContent = bestWholesale ? `${bestWholesale.source || "Wholesale source"} · MOQ ${bestWholesale.minimum_order_quantity || 1} · minimum ${money(Number(bestWholesale.minimum_order_cost ?? wholesaleUnit))}` : "No wholesale offer";
+  const sourcingCandidates = [retailUnit, wholesaleUnit].filter(value => Number.isFinite(value) && value > 0);
+  const bestSourcing = sourcingCandidates.length ? Math.min(...sourcingCandidates) : NaN;
+  $("useBestSourcingPrice").disabled = !Number.isFinite(bestSourcing);
+  $("useBestSourcingPrice").dataset.price = Number.isFinite(bestSourcing) ? String(bestSourcing) : "";
   const safeAlternatives = alternatives.slice(0, 8).map(item => ({ ...item, safeUrl: safeWebUrl(item.url) })).filter(item => item.safeUrl);
   $("alternativeCount").textContent = `${safeAlternatives.length} alternative${safeAlternatives.length === 1 ? "" : "s"}`;
   $("marketAlternatives").innerHTML = safeAlternatives.map(item => {
@@ -314,7 +346,7 @@ async function refreshMarketData() {
       throw error;
     }
     renderMarketSnapshot(data);
-    setMarketState("success", "Exact-product offers and spec-matched alternatives loaded. Alternatives never change the exact price range.");
+    setMarketState("success", "Retail, wholesale, and verified sold data are separated. Extreme price anomalies do not change the retail range.");
   } catch (error) {
     $("marketSnapshot").hidden = true;
     if (error.code === "no_exact_match") {
@@ -380,6 +412,7 @@ $("clearComps").addEventListener("click",()=>{comps=[];renderComps()});
 $("refreshMarketButton").addEventListener("click",refreshMarketData);
 $("quickMarketButton").addEventListener("click",()=>{$("marketLookupPanel").scrollIntoView({behavior:"smooth",block:"start"});void refreshMarketData()});
 $("useMarketPrice").addEventListener("click",()=>{const price=Number($("useMarketPrice").dataset.price);if(price>0){$("salePrice").value=price.toFixed(2);analyze();toast("Conservative market price applied")}});
+$("useBestSourcingPrice").addEventListener("click",()=>{const price=Number($("useBestSourcingPrice").dataset.price);if(price>0){$("buyPrice").value=price.toFixed(2);analyze();toast("Best unit sourcing cost applied — verify MOQ and landed costs")}});
 $("settingsButton").addEventListener("click",()=>{renderFeeSettings();populateAgentSettings();$("settingsDialog").showModal()});
 document.querySelectorAll(".close-settings").forEach(button=>button.addEventListener("click",()=>$("settingsDialog").close()));
 $("testAgentConnection").addEventListener("click",testAgentConnection);
