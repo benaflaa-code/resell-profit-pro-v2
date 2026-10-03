@@ -335,7 +335,7 @@ async function refreshMarketData() {
     $("productName").focus();
     return;
   }
-  setMarketState("loading", "Searching current public listings and checking exact-product matches…");
+  setMarketState("loading", "Searching current public listings and checking exact-product matches… Complex searches can take up to two minutes.");
   try {
     const response = await fetch("/api/market-lookup", {
       method: "POST",

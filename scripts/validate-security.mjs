@@ -21,6 +21,7 @@ const required = [
   [worker, "sameOriginRequest", "same-origin API check"],
   [worker, 'request.headers.get("cf-connecting-ip")', "non-spoofable rate-limit key"],
   [worker, "readSmallJson", "request-size limit"],
+  [worker, "AbortSignal.timeout(120000)", "two-minute market lookup timeout"],
   [app, "sessionStorage, \"rpp2_agent_token\"", "tab-only token storage"],
   [app, 'url.protocol==="https:"', "HTTPS-only listing links"],
   [compose, '"127.0.0.1:8787:8787"', "localhost-only agent port"],

@@ -132,16 +132,32 @@ async function marketLookup(request, env) {
       method: "POST",
       headers,
       body: JSON.stringify({ identifier, product_name: productName, reference_url: referenceUrl }),
-      signal: AbortSignal.timeout(45000)
+      signal: AbortSignal.timeout(120000)
     });
-    const payload = await response.json().catch(() => ({ error: "invalid_agent_response" }));
+    const responseText = await response.text();
+    let payload = {};
+    try { payload = responseText ? JSON.parse(responseText) : {}; } catch {
+      payload = { error: "invalid_agent_response" };
+    }
     if (!response.ok) {
-      const message = response.status === 401 ? "The agent token was rejected. Reconnect the agent with the token from your local .env file." : payload.message || payload.detail || "The price agent returned an error.";
+      const message = response.status === 401
+        ? "The agent token was rejected. Reconnect the agent with the token from your local .env file."
+        : response.status === 429
+          ? "The market agent reached its lookup limit. Wait one minute and refresh again."
+          : [504, 524].includes(response.status)
+            ? "The market search took too long. Try a more specific product name, model, UPC, or ASIN."
+            : payload.message || payload.detail || `The price agent returned HTTP ${response.status}.`;
       return json({ error: payload.error || "agent_error", message }, response.status >= 400 && response.status < 600 ? response.status : 502);
     }
     return json(payload);
-  } catch {
-    return json({ error: "agent_unavailable", message: "The open-source market agent is unavailable right now." }, 502);
+  } catch (error) {
+    const timedOut = error?.name === "TimeoutError" || error?.name === "AbortError";
+    return json({
+      error: timedOut ? "agent_timeout" : "agent_unavailable",
+      message: timedOut
+        ? "The market search exceeded two minutes. Try a more specific product name, model, UPC, or ASIN."
+        : "The open-source market agent is unavailable right now."
+    }, timedOut ? 504 : 502);
   }
 }
 
