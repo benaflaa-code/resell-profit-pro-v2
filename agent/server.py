@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-AGENT_VERSION = "1.4.0"
+AGENT_VERSION = "1.5.0"
 app = FastAPI(
     title="Resell Profit Pro Market Agent",
     version=AGENT_VERSION,
@@ -26,7 +26,7 @@ app = FastAPI(
     redoc_url=None,
     openapi_url=None,
 )
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "market-agent", "host.docker.internal", "*.trycloudflare.com"])
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "market-agent", "host.docker.internal", "*.trycloudflare.com", "*.ts.net"])
 
 SEARXNG_URL = os.getenv("SEARXNG_URL", "http://searxng:8080").rstrip("/")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://ollama:11434").rstrip("/")

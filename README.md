@@ -38,10 +38,10 @@ The included Docker setup runs three local services:
 2. Copy `.env.example` to `.env`. Replace both examples with different random values of at least 32 characters; never commit `.env`.
 3. Run `docker compose up -d --build`.
 4. Verify `http://127.0.0.1:8787/health` using the `AGENT_TOKEN` value as a Bearer authorization header.
-5. Place the agent behind an authenticated HTTPS endpoint. Do not expose Ollama or SearXNG directly. For a temporary test, a Cloudflare Quick Tunnel can point to `http://host.docker.internal:8787`.
+5. Place the agent behind an authenticated HTTPS endpoint. Do not expose Ollama or SearXNG directly. For a persistent personal setup, Tailscale Funnel can securely proxy `http://127.0.0.1:8787`; use its background mode so it resumes after restarts. A Cloudflare Quick Tunnel remains suitable only for temporary tests.
 6. In the live app, open **Settings**, paste the HTTPS tunnel address and private agent token, then select **Test connection**. The address remains in that browser, while the token lasts only for the current browser session. Neither is added to public source code.
 
-For an always-on deployment, site administrators can instead configure private `PRICE_AGENT_URL` and `PRICE_AGENT_TOKEN` runtime variables. Quick Tunnel addresses change when the tunnel restarts and are intended for testing.
+For a seamless hosted deployment, site administrators can configure private `PRICE_AGENT_URL` and `PRICE_AGENT_TOKEN` runtime variables. Tailscale Funnel provides a stable `.ts.net` address; Cloudflare Quick Tunnel addresses change when the tunnel restarts and are intended for testing.
 
 The hosted app remains usable without the agent: manual marketplace links and comparable-sale entry continue to work. Public sites can restrict or block automated access, so every result includes its source and must be checked before buying.
 
@@ -55,7 +55,7 @@ Retail asking prices and wholesale sourcing quotes are also kept separate. Pack 
 
 The market agent uses constant-time bearer-token authentication, authenticated health checks, request and concurrency limits, private-address and redirect blocking, peer-IP verification, download-size limits, disabled API documentation, and container privilege restrictions. The hosted Worker adds same-origin checks, API throttling, body-size limits, restrictive browser security headers, and no-store API responses.
 
-The hosted app should remain owner-only while it accepts a browser-provided Quick Tunnel address. Stop the Quick Tunnel when market lookup is not needed. See [SECURITY.md](SECURITY.md) for private vulnerability reporting and the operating boundaries.
+The hosted app should remain owner-only while it accepts a browser-provided tunnel address. Stop public tunneling when market lookup is not needed. See [SECURITY.md](SECURITY.md) for private vulnerability reporting and the operating boundaries.
 
 ## Run locally
 

@@ -21,7 +21,9 @@ const required = [
   [worker, "sameOriginRequest", "same-origin API check"],
   [worker, 'request.headers.get("cf-connecting-ip")', "non-spoofable rate-limit key"],
   [worker, "readSmallJson", "request-size limit"],
+  [worker, 'host.endsWith(".ts.net")', "Tailscale Funnel host restriction"],
   [worker, "AbortSignal.timeout(120000)", "two-minute market lookup timeout"],
+  [agent, '"*.ts.net"', "Tailscale trusted-host restriction"],
   [app, "sessionStorage, \"rpp2_agent_token\"", "tab-only token storage"],
   [app, 'url.protocol==="https:"', "HTTPS-only listing links"],
   [compose, '"127.0.0.1:8787:8787"', "localhost-only agent port"],
@@ -42,6 +44,7 @@ const publicText = [agent, worker, app, compose, example, html].join("\n");
 const forbidden = [
   [/\b33140\b/i, "private ZIP code"],
   [/https:\/\/[a-z]+(?:-[a-z]+){2,}\.trycloudflare\.com/i, "live Quick Tunnel address"],
+  [/https:\/\/[a-z0-9-]+\.[a-z0-9-]+\.ts\.net/i, "live Tailscale Funnel address"],
   [/AGENT_TOKEN=[a-f0-9]{32,}/i, "real agent token"]
 ];
 for (const [pattern, name] of forbidden) {

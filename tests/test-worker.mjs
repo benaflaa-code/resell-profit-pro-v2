@@ -19,12 +19,20 @@ const oversized = await call("/api/market-lookup", {
   method: "POST",
   headers: {
     "content-type": "application/json",
-    "x-rpp-agent-url": "https://example.trycloudflare.com",
+    "x-rpp-agent-url": "https://resell-agent.example.ts.net",
     "x-rpp-agent-token": "test-token"
   },
   body: JSON.stringify({ product_name: "x".repeat(5000) })
 });
 assert.equal(oversized.status, 413);
+
+const blockedAgentHost = await call("/api/market-health", {
+  headers: {
+    "x-rpp-agent-url": "https://example.com",
+    "x-rpp-agent-token": "test-token"
+  }
+});
+assert.equal(blockedAgentHost.status, 503);
 
 for (let index = 0; index < 30; index += 1) {
   const response = await call("/api/not-a-route", { headers: { "cf-connecting-ip": "203.0.113.10" } });

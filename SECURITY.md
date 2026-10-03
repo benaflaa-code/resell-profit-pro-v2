@@ -13,7 +13,7 @@ If private reporting is unavailable, open a public issue containing only a short
 ## Trust boundaries
 
 - The GitHub source is public; `.env` and real credentials must remain local.
-- The hosted app is intended to remain owner-only while it accepts a browser-provided Quick Tunnel address.
+- The hosted app is intended to remain owner-only while it accepts a browser-provided Tailscale Funnel or temporary Quick Tunnel address.
 - Only the FastAPI market agent may be exposed through the tunnel. Never expose SearXNG, Ollama, Docker Desktop, or other Windows services.
 - Marketplace pages and search results are untrusted. Results are decision support, not guaranteed prices or verified inventory.
 
@@ -22,4 +22,4 @@ If private reporting is unavailable, open a public issue containing only a short
 - Use different random values for `AGENT_TOKEN` and `SEARXNG_SECRET`.
 - Rotate `AGENT_TOKEN` after accidental disclosure.
 - Keep Docker Desktop, Windows, the browser, and container images updated.
-- Stop the Cloudflare Quick Tunnel when live market lookup is not needed.
+- Stop public tunneling when live market lookup is not needed.

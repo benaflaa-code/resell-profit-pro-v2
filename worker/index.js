@@ -74,7 +74,8 @@ function browserAgentUrl(request) {
   const url = safeAgentUrl(raw);
   if (!url) return null;
   const host = url.hostname.toLowerCase();
-  if (!host.endsWith(".trycloudflare.com") || url.username || url.password || (url.port && url.port !== "443")) return null;
+  const allowedTunnelHost = host.endsWith(".trycloudflare.com") || host.endsWith(".ts.net");
+  if (!allowedTunnelHost || url.username || url.password || (url.port && url.port !== "443")) return null;
   return new URL(url.origin);
 }
 

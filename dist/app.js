@@ -37,7 +37,9 @@ safeStorageSet(localStorage, "rpp2_agent_connection", "");
 function cleanAgentUrl(value) {
   try {
     const url = new URL(String(value || "").trim());
-    if (url.protocol !== "https:" || !url.hostname.toLowerCase().endsWith(".trycloudflare.com")) return "";
+    const host = url.hostname.toLowerCase();
+    const allowedTunnelHost = host.endsWith(".trycloudflare.com") || host.endsWith(".ts.net");
+    if (url.protocol !== "https:" || !allowedTunnelHost || url.username || url.password || (url.port && url.port !== "443")) return "";
     return url.origin;
   } catch { return ""; }
 }
@@ -68,7 +70,7 @@ function saveAgentSettings() {
   const rawUrl = $("agentUrl").value.trim();
   const url = cleanAgentUrl(rawUrl);
   const token = $("agentToken").value.trim() || agentConnection.token;
-  if (rawUrl && !url) throw new Error("Use the HTTPS trycloudflare.com address shown by your tunnel.");
+  if (rawUrl && !url) throw new Error("Use the HTTPS .ts.net or trycloudflare.com address shown by your tunnel.");
   if ((url && !token) || (!url && token)) throw new Error("Both the tunnel address and private token are required.");
   agentConnection = { url, token };
   safeStorageSet(localStorage, "rpp2_agent_url", url);
@@ -84,7 +86,7 @@ async function testAgentConnection() {
     const response = await fetch("/api/market-health", { headers: agentHeaders() });
     const data = await response.json().catch(() => ({}));
     if (data.reachable && !data.authorized) throw new Error("The tunnel is online, but the private token does not match AGENT_TOKEN in your .env file.");
-    if (!response.ok || !data.reachable) throw new Error("The tunnel is not reaching the market agent. Keep Docker and Cloudflare Tunnel running.");
+    if (!response.ok || !data.reachable) throw new Error("The tunnel is not reaching the market agent. Keep Docker and Tailscale Funnel running.");
     showAgentConnection("success", `${data.model || "Local model"} is online and ready for market searches.`);
   } catch (error) {
     showAgentConnection("error", error.message || "Connection test failed.");
