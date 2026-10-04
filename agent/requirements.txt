@@ -3,4 +3,4 @@ starlette==1.6.0
 uvicorn[standard]==0.52.4
 httpx==0.28.1
 beautifulsoup4==4.15.0
-soupsieve==2.9.2
+soupsieve==2.10
